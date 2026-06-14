@@ -7,6 +7,7 @@
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow: hidden;
+  background: #1a1a1a;
 }
 
 #map {
@@ -20,40 +21,72 @@ body {
   z-index: 1;
 }
 
+/* Address display at bottom */
+#address-display {
+  position: fixed;
+  bottom: 90px;
+  left: 10px;
+  right: 10px;
+  background: rgba(30, 30, 30, 0.95);
+  border-radius: 8px;
+  padding: 15px;
+  z-index: 50;
+  max-height: 60px;
+  overflow: hidden;
+  text-align: center;
+}
+
+#address {
+  color: #e0e0e0;
+  font-size: 16px;
+  letter-spacing: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+}
+
+.address-char {
+  display: inline-block;
+  transform: rotate(var(--rotation, 0deg));
+  transition: transform 0.3s ease;
+}
+
 #info-panel {
   position: fixed;
   top: 10px;
   right: 10px;
   width: 350px;
   max-height: 80vh;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(40, 40, 40, 0.95);
   border-radius: 10px;
   padding: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
   overflow-y: auto;
   z-index: 100;
   backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 #info-panel h2 {
   font-size: 16px;
   margin: 15px 0 8px;
-  color: #333;
-  border-bottom: 2px solid #007bff;
+  color: #e0e0e0;
+  border-bottom: 2px solid #666;
   padding-bottom: 5px;
 }
 
 #info-panel p {
   font-size: 13px;
   margin: 5px 0;
-  color: #666;
+  color: #b0b0b0;
   line-height: 1.5;
 }
 
 #info-panel p:first-child {
   font-weight: bold;
   font-size: 14px;
-  color: #333;
+  color: #e0e0e0;
 }
 
 #facilities-list {
@@ -63,28 +96,28 @@ body {
 }
 
 .facility-item {
-  background: #f5f5f5;
+  background: rgba(60, 60, 60, 0.8);
   padding: 8px;
   margin: 5px 0;
   border-radius: 5px;
   font-size: 12px;
-  border-left: 4px solid #007bff;
+  border-left: 4px solid #666;
 }
 
 .facility-item .name {
   font-weight: bold;
-  color: #333;
+  color: #e0e0e0;
 }
 
 .facility-item .type {
-  color: #666;
+  color: #888;
   font-size: 11px;
 }
 
 #error-message {
-  background: #f8d7da;
-  border: 1px solid #f5c6cb;
-  color: #721c24;
+  background: rgba(200, 50, 50, 0.8);
+  border: 1px solid rgba(255, 100, 100, 0.5);
+  color: #ff9999;
   padding: 10px;
   border-radius: 5px;
   margin-top: 10px;
@@ -96,21 +129,22 @@ button {
   bottom: 20px;
   right: 20px;
   padding: 12px 16px;
-  background: #007bff;
-  color: white;
-  border: none;
+  background: #444;
+  color: #e0e0e0;
+  border: 1px solid #666;
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
   z-index: 99;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
   transition: all 0.3s ease;
 }
 
 button:hover {
-  background: #0056b3;
+  background: #555;
+  border-color: #888;
   transform: translateY(-2px);
-  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.7);
 }
 
 #refresh-btn {
@@ -121,18 +155,22 @@ button:hover {
   bottom: 20px;
 }
 
-/* Leaflet カスタムスタイル */
+/* Leaflet custom styles */
 .leaflet-popup-content-wrapper {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(40, 40, 40, 0.95);
   border-radius: 8px;
 }
 
 .leaflet-popup-content {
   font-size: 13px;
-  color: #333;
+  color: #e0e0e0;
 }
 
-/* レスポンシブ */
+.leaflet-popup-tip {
+  background: rgba(40, 40, 40, 0.95);
+}
+
+/* Responsive */
 @media (max-width: 768px) {
   #info-panel {
     width: 100%;
@@ -155,7 +193,7 @@ button:hover {
   }
 }
 
-/* スクロールバーのスタイル */
+/* Scrollbar styles */
 #info-panel::-webkit-scrollbar,
 #facilities-list::-webkit-scrollbar {
   width: 8px;
@@ -163,17 +201,17 @@ button:hover {
 
 #info-panel::-webkit-scrollbar-track,
 #facilities-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: rgba(60, 60, 60, 0.5);
   border-radius: 10px;
 }
 
 #info-panel::-webkit-scrollbar-thumb,
 #facilities-list::-webkit-scrollbar-thumb {
-  background: #888;
+  background: #666;
   border-radius: 10px;
 }
 
 #info-panel::-webkit-scrollbar-thumb:hover,
 #facilities-list::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #888;
 }

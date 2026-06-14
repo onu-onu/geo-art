@@ -1,39 +1,41 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Geo Art - 位置情報アート</title>
+  <title>Geo Art - Location-based Visual Art</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div id="map"></div>
   
+  <div id="address-display"></div>
+  
   <div id="info-panel">
     <div id="location-info">
-      <h2>📍 位置情報</h2>
-      <p id="address">取得中...</p>
+      <h2>📍 Location</h2>
+      <p id="address">Loading...</p>
       <p id="coordinates"></p>
     </div>
     
     <div id="weather-info">
-      <h2>🌤️ 天気</h2>
-      <p id="temperature">取得中...</p>
+      <h2>🌤️ Weather</h2>
+      <p id="temperature">Loading...</p>
       <p id="wind-speed"></p>
       <p id="weather-description"></p>
     </div>
     
     <div id="facilities-info">
-      <h2>🏪 周辺施設</h2>
+      <h2>🏪 Nearby Facilities</h2>
       <div id="facilities-list"></div>
     </div>
     
     <div id="error-message" style="display: none;"></div>
   </div>
   
-  <button id="refresh-btn" onclick="refreshData()">🔄 データを更新</button>
-  <button id="toggle-panel-btn" onclick="togglePanel()">📋 情報パネルを切り替え</button>
+  <button id="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+  <button id="toggle-panel-btn" onclick="togglePanel()">📋 Toggle Panel</button>
   
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="script.js"></script>

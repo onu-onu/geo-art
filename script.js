@@ -1,69 +1,48 @@
-// グローバル変数
+// Global variables
 let map;
 let currentMarker;
 let facilityMarkers = [];
 let currentLat, currentLon;
 let panelVisible = true;
+let currentWeatherData = {};
+let currentTime = new Date();
 
-// 天気コード対応表
-const weatherCodes = {
-  0: '晴天',
-  1: '晴れ',
-  2: '曇り',
-  3: '曇り',
-  45: '霧',
-  48: '霧',
-  51: '小雨',
-  53: '小雨',
-  55: '小雨',
-  61: '雨',
-  63: '雨',
-  65: '大雨',
-  71: '小雪',
-  73: '小雪',
-  75: '雪',
-  77: '雪粒',
-  80: 'スコール',
-  81: 'スコール',
-  82: 'スコール',
-  85: 'みぞれ',
-  86: 'みぞれ'
+// Amenity to Hue mapping (HSL color space)
+const amenityHueMap = {
+  'restaurant': 0,      // Red
+  'cafe': 30,           // Orange
+  'bar': 60,            // Yellow
+  'fast_food': 90,      // Green-yellow
+  'shop': 120,          // Green
+  'supermarket': 150,   // Cyan-green
+  'bakery': 180,        // Cyan
+  'bank': 210,          // Blue
+  'post_office': 240,   // Indigo
+  'library': 270,       // Violet
+  'hospital': 300,      // Magenta
+  'pharmacy': 330,      // Rose
+  'park': 120,          // Green
+  'parking': 60         // Yellow
 };
 
-// 施設タイプのアイコン
-const facilityIcons = {
-  'restaurant': '🍽️',
-  'cafe': '☕',
-  'bar': '🍺',
-  'fast_food': '🍔',
-  'shop': '🏪',
-  'supermarket': '🛒',
-  'bakery': '🥐',
-  'bank': '🏦',
-  'post_office': '📮',
-  'library': '📚',
-  'hospital': '🏥',
-  'pharmacy': '💊',
-  'park': '🌳',
-  'parking': '🅿️'
-};
-
-// マップ初期化
+// Map initialization
 function initMap() {
   map = L.map('map').setView([35.6762, 139.6503], 13);
   
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-    maxZoom: 19
+  // Dark monochrome tile layer (CartoDB Positron Dark)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap contributors, © CartoDB',
+    maxZoom: 19,
+    subdomains: 'abcd'
   }).addTo(map);
 }
 
-// 位置情報取得
+// Get current location
 function getCurrentLocation() {
-  showMessage('位置情報を取得中...', 'info');
+  showMessage('Fetching location...', 'info');
   
   if (!navigator.geolocation) {
-    showError('ブラウザがGeolocation APIに対応していません');
+    showError('Geolocation API not supported by this browser');
     return;
   }
   
@@ -72,12 +51,12 @@ function getCurrentLocation() {
       currentLat = position.coords.latitude;
       currentLon = position.coords.longitude;
       
-      console.log(`位置情報: ${currentLat}, ${currentLon}`);
+      console.log(`Location: ${currentLat}, ${currentLon}`);
       
-      // マップ中心を移動
+      // Move map center
       map.setView([currentLat, currentLon], 14);
       
-      // 現在地マーカーを設置
+      // Set current location marker
       if (currentMarker) {
         map.removeLayer(currentMarker);
       }
@@ -91,15 +70,16 @@ function getCurrentLocation() {
           shadowSize: [41, 41]
         })
       }).addTo(map);
-      currentMarker.bindPopup('📍 現在地').openPopup();
+      currentMarker.bindPopup('📍 Current Location').openPopup();
       
-      // データ取得開始
+      // Start data fetching
+      currentTime = new Date();
       fetchAllData();
     },
     (error) => {
-      console.error('位置情報エラー:', error);
-      showError(`位置情報の取得に失敗しました: ${error.message}`);
-      // フォールバック
+      console.error('Geolocation error:', error);
+      showError(`Failed to get location: ${error.message}`);
+      // Fallback
       fetchAllData();
     },
     {
@@ -110,10 +90,10 @@ function getCurrentLocation() {
   );
 }
 
-// 全てのデータ取得
+// Fetch all data
 async function fetchAllData() {
   if (!currentLat || !currentLon) {
-    showError('位置情報が利用できません');
+    showError('Location data not available');
     return;
   }
   
@@ -124,16 +104,16 @@ async function fetchAllData() {
       fetchFacilities()
     ]);
   } catch (error) {
-    console.error('データ取得エラー:', error);
-    showError(`データ取得中にエラーが発生しました: ${error.message}`);
+    console.error('Data fetch error:', error);
+    showError(`Error fetching data: ${error.message}`);
   }
 }
 
-// Nominatim - 住所取得
+// Nominatim - Fetch address (English)
 async function fetchAddress() {
   try {
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLon}&zoom=10&addressdetails=1`,
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLon}&zoom=10&addressdetails=1&accept-language=en`,
       { headers: { 'Accept': 'application/json' } }
     );
     
@@ -142,23 +122,45 @@ async function fetchAddress() {
     const data = await response.json();
     const address = data.address;
     
-    const displayAddress = `${address.city || address.town || address.village || '不明'}, ${address.prefecture || address.state || ''}`;
+    const displayAddress = `${address.city || address.town || address.village || 'Unknown'}, ${address.state || address.country || ''}`;
     
-    document.getElementById('address').textContent = displayAddress;
-    document.getElementById('coordinates').textContent = `座標: ${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`;
+    // Display address at bottom with rotating characters
+    displayRotatingAddress(displayAddress);
+    document.getElementById('coordinates').textContent = `Coordinates: ${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`;
     
-    console.log('住所:', displayAddress);
+    console.log('Address:', displayAddress);
   } catch (error) {
-    console.error('Nominatim エラー:', error);
-    document.getElementById('address').textContent = '住所取得失敗';
+    console.error('Nominatim error:', error);
+    document.getElementById('address').textContent = 'Address fetch failed';
   }
 }
 
-// Open-Meteo - 天気取得
+// Display address with rotating characters
+function displayRotatingAddress(address) {
+  const addressElement = document.getElementById('address');
+  addressElement.innerHTML = '';
+  
+  // Remove spaces and convert to array of characters
+  const chars = address.split('');
+  
+  chars.forEach((char, index) => {
+    const span = document.createElement('span');
+    span.textContent = char;
+    span.className = 'address-char';
+    
+    // Random rotation for each character
+    const randomRotation = (Math.random() - 0.5) * 360;
+    span.style.setProperty('--rotation', `${randomRotation}deg`);
+    
+    addressElement.appendChild(span);
+  });
+}
+
+// Open-Meteo - Fetch weather
 async function fetchWeather() {
   try {
     const response = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m&timezone=Asia/Tokyo`
+      `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m&timezone=auto`
     );
     
     if (!response.ok) throw new Error('Open-Meteo API error');
@@ -166,24 +168,24 @@ async function fetchWeather() {
     const data = await response.json();
     const current = data.current;
     
+    currentWeatherData = current;
+    
     const temp = current.temperature_2m;
-    const weatherCode = current.weather_code;
     const windSpeed = current.wind_speed_10m;
     const humidity = current.relative_humidity_2m;
-    const weatherDesc = weatherCodes[weatherCode] || '不明';
     
-    document.getElementById('temperature').textContent = `気温: ${temp}°C`;
-    document.getElementById('wind-speed').textContent = `風速: ${windSpeed} m/s`;
-    document.getElementById('weather-description').textContent = `天気: ${weatherDesc} (湿度: ${humidity}%)`;
+    document.getElementById('temperature').textContent = `Temperature: ${temp}°C`;
+    document.getElementById('wind-speed').textContent = `Wind Speed: ${windSpeed} m/s`;
+    document.getElementById('weather-description').textContent = `Humidity: ${humidity}%`;
     
-    console.log('天気:', { temp, weatherDesc, windSpeed, humidity });
+    console.log('Weather:', { temp, windSpeed, humidity });
   } catch (error) {
-    console.error('Open-Meteo エラー:', error);
-    document.getElementById('temperature').textContent = '天気取得失敗';
+    console.error('Open-Meteo error:', error);
+    document.getElementById('temperature').textContent = 'Weather fetch failed';
   }
 }
 
-// Overpass - 周辺施設取得
+// Overpass - Fetch nearby facilities
 async function fetchFacilities() {
   try {
     const query = `[out:json][timeout:25];
@@ -206,70 +208,105 @@ out center 50;
     const data = await response.json();
     const elements = data.elements || [];
     
-    console.log('取得した施設数:', elements.length);
+    console.log('Fetched facilities:', elements.length);
     
-    // 既存マーカーを削除
+    // Remove existing markers
     facilityMarkers.forEach(marker => map.removeLayer(marker));
     facilityMarkers = [];
     
-    // 施設リストをクリア
+    // Clear facilities list
     const facilitiesList = document.getElementById('facilities-list');
     facilitiesList.innerHTML = '';
     
-    // 最大20個の施設を表示
-    const displayElements = elements.slice(0, 20);
+    // Display up to 50 facilities
+    const displayElements = elements.slice(0, 50);
     
     displayElements.forEach((element) => {
       if (!element.lat || !element.lon) return;
       
       const tags = element.tags || {};
-      const name = tags.name || tags.shop || tags.amenity || '施設';
+      const name = tags.name || tags.shop || tags.amenity || 'Facility';
       const type = tags.amenity || tags.shop || 'unknown';
-      const icon = facilityIcons[type] || '📍';
+      const openingHours = tags.opening_hours || '';
       
-      // マーカーを追加
-      const marker = L.marker([element.lat, element.lon], {
-        icon: L.divIcon({
-          className: 'facility-marker',
-          html: `<div style="font-size: 20px;">${icon}</div>`,
-          iconSize: [30, 30],
-          iconAnchor: [15, 15]
-        })
+      // Calculate color based on amenity type and opening hours
+      const hue = amenityHueMap[type] || 0;
+      const saturation = 85; // Fixed at 0.85
+      const lightness = calculateLightness(openingHours);
+      
+      const color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+      
+      // Create small circle marker
+      const circleMarker = L.circleMarker([element.lat, element.lon], {
+        radius: 5,
+        fillColor: color,
+        color: color,
+        weight: 1,
+        opacity: 0.8,
+        fillOpacity: 0.7
       }).addTo(map);
       
-      marker.bindPopup(`<b>${name}</b><br>タイプ: ${type}`);
-      facilityMarkers.push(marker);
+      circleMarker.bindPopup(`<b>${name}</b><br>Type: ${type}`);
+      facilityMarkers.push(circleMarker);
       
-      // リストに追加
+      // Add to list
       const item = document.createElement('div');
       item.className = 'facility-item';
-      item.innerHTML = `<div class="name">${icon} ${name}</div><div class="type">${type}</div>`;
+      item.innerHTML = `<div class="name" style="color: ${color};">● ${name}</div><div class="type">${type}</div>`;
       facilitiesList.appendChild(item);
     });
     
     if (displayElements.length === 0) {
-      facilitiesList.innerHTML = '<p>周辺に施設が見つかりません</p>';
+      facilitiesList.innerHTML = '<p>No facilities found nearby</p>';
     }
   } catch (error) {
-    console.error('Overpass エラー:', error);
-    document.getElementById('facilities-list').innerHTML = '<p>施設取得失敗</p>';
+    console.error('Overpass error:', error);
+    document.getElementById('facilities-list').innerHTML = '<p>Facility fetch failed</p>';
   }
 }
 
-// 情報パネルの表示/非表示
+// Calculate lightness based on opening hours vs current time
+function calculateLightness(openingHoursStr) {
+  if (!openingHoursStr) return 50; // Default to 50% if no opening hours
+  
+  try {
+    // Try to parse opening hours and calculate time until closing/opening
+    // For simplicity, using a fixed calculation
+    // This is a placeholder - more complex parsing would be needed for full OSM format
+    
+    const hour = currentTime.getHours();
+    
+    // Simple heuristic: facilities typically open 9-22
+    const isOpen = hour >= 9 && hour <= 22;
+    
+    if (isOpen) {
+      // Normalize hour to 0-1 range during open hours
+      const normalizedTime = (hour - 9) / 13; // 9-22 = 13 hours
+      const lightness = 30 + (normalizedTime * 40); // Range 30-70%
+      return Math.round(lightness);
+    } else {
+      // Closed - use darker values
+      return 20;
+    }
+  } catch (error) {
+    return 50;
+  }
+}
+
+// Toggle info panel
 function togglePanel() {
   const panel = document.getElementById('info-panel');
   panelVisible = !panelVisible;
   panel.style.display = panelVisible ? 'block' : 'none';
 }
 
-// データを更新
+// Refresh data
 function refreshData() {
-  console.log('データを更新中...');
+  console.log('Refreshing data...');
   getCurrentLocation();
 }
 
-// エラーメッセージ表示
+// Show error message
 function showError(message) {
   console.error(message);
   const errorDiv = document.getElementById('error-message');
@@ -280,14 +317,14 @@ function showError(message) {
   }, 5000);
 }
 
-// メッセージ表示（コンソール用）
+// Show message (for console)
 function showMessage(message, type = 'info') {
   console.log(`[${type.toUpperCase()}] ${message}`);
 }
 
-// 初期化
+// Initialize
 window.addEventListener('load', () => {
-  console.log('アプリを初期化中...');
+  console.log('Initializing app...');
   initMap();
   getCurrentLocation();
 });
